@@ -1,0 +1,17 @@
+PROMPT-INTERFACE INTERVENTION IMPLEMENTATION FREEZE
+
+Date: 2026-09-28
+Global seed: 20260928
+
+prompt_sam.py SHA256:
+3101e4d13192c8efe12780b587dec1d1b2b92c26ffe13d4b81479b5022db473c
+
+Validation:
+- Breast113 BOX regression: 113/113 pixel-identical to established B0
+- deterministic repeatability: PASS
+- processing-order invariance: PASS
+- seed sensitivity: 113/113
+- case-seed uniqueness: 113/113
+
+The implementation must not be modified after prompt-interface
+intervention results are examined.

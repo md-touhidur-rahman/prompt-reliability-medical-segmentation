@@ -1,0 +1,18 @@
+{
+  "dataset": "Brain600",
+  "split_unit": "patient",
+  "stratification": "tumor_label",
+  "seed": 20260928,
+  "heldout_fraction_target": 0.2,
+  "total_cases": 600,
+  "total_patients": 177,
+  "development_cases": 469,
+  "heldout_cases": 131,
+  "development_patients": 142,
+  "heldout_patients": 35,
+  "patient_overlap": 0,
+  "source_sha256": "aefed9762d34d2f346c66a456c6ee6c76c4ee3f5f1084f739f6e32647940e301",
+  "patient_manifest_sha256": "6998141a2275c6131adc687d5b5135ebdd612999392c77b61e5036297ce356a6",
+  "case_manifest_sha256": "e82f3e1afda9c92979cd06db286ed63825a5a6fe50fcfd1a6c36d4d782206814",
+  "policy": "Split frozen before threshold selection or held-out performance evaluation. All threshold/model-selection decisions must use development data only."
+}

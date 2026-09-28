@@ -1,0 +1,36 @@
+========================================================================================
+MEDCLIP-SAMV2 — CLUSTER-ROBUST PROPAGATION INFERENCE
+========================================================================================
+
+Images       = 600
+Observations = 3000
+Bootstrap B  = 5000
+Permutation  = 5000
+
+===== IMAGE-CLUSTER BOOTSTRAP 95% CI =====
+embedding -> coarse            rho=+0.3383 | 95% CI [+0.2982, +0.3793]
+coarse -> SAM                  rho=+0.6055 | 95% CI [+0.5668, +0.6402]
+coarse -> |DSC change|         rho=+0.5412 | 95% CI [+0.5014, +0.5791]
+SAM -> |DSC change|            rho=+0.9139 | 95% CI [+0.8940, +0.9319]
+embedding -> |DSC change|      rho=+0.1872 | 95% CI [+0.1407, +0.2334]
+
+===== WITHIN-IMAGE PERMUTATION TEST =====
+embedding -> coarse            rho=+0.6358 | null mean=+0.0856 | null95=[+0.0551,+0.1155] | p_perm=0.000200
+coarse -> SAM                  rho=+0.7106 | null mean=+0.3211 | null95=[+0.2962,+0.3460] | p_perm=0.000200
+coarse -> |DSC change|         rho=+0.6568 | null mean=+0.2855 | null95=[+0.2608,+0.3100] | p_perm=0.000200
+SAM -> |DSC change|            rho=+0.9314 | null mean=+0.5009 | null95=[+0.4741,+0.5287] | p_perm=0.000200
+embedding -> |DSC change|      rho=+0.3952 | null mean=+0.0664 | null95=[+0.0393,+0.0920] | p_perm=0.000200
+
+===== IMAGE-LEVEL TRAJECTORY BOOTSTRAP =====
+embedding -> coarse            N=598 | mean r=+0.6497 95% CI [+0.6204, +0.6780] | positive= 93.8% 95% CI [ 91.8,  95.7]
+coarse -> SAM                  N=585 | mean r=+0.7431 95% CI [+0.7123, +0.7729] | positive= 93.2% 95% CI [ 91.1,  95.0]
+coarse -> |DSC change|         N=581 | mean r=+0.6364 95% CI [+0.5996, +0.6728] | positive= 88.0% 95% CI [ 85.4,  90.5]
+SAM -> |DSC change|            N=581 | mean r=+0.8727 95% CI [+0.8454, +0.8977] | positive= 96.0% 95% CI [ 94.3,  97.6]
+embedding -> |DSC change|      N=582 | mean r=+0.4171 95% CI [+0.3757, +0.4584] | positive= 79.7% 95% CI [ 76.5,  82.8]
+
+===== CONDITION-CENTERED OBSERVED EFFECTS =====
+embedding -> coarse            rho=+0.3383
+coarse -> SAM                  rho=+0.6055
+coarse -> |DSC change|         rho=+0.5412
+SAM -> |DSC change|            rho=+0.9139
+embedding -> |DSC change|      rho=+0.1872

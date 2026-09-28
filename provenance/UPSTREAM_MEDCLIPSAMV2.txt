@@ -1,0 +1,9 @@
+Upstream repository:
+https://github.com/HealthX-Lab/MedCLIP-SAMv2
+
+Upstream commit used as repository base:
+07047e3f51e7f112cfeb490698ca60a1867295f2
+
+This publication repository contains additional experimental analyses
+and derived manuscript artifacts. Large model weights and medical-image
+datasets are intentionally excluded.

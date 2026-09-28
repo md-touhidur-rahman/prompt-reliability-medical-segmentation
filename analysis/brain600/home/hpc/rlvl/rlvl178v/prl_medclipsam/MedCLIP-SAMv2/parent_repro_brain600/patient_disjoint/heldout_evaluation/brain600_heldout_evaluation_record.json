@@ -1,0 +1,9 @@
+{
+  "evaluation": "one-shot patient-disjoint held-out evaluation",
+  "frozen_detector_sha256": "d425728cee29161e64fd7329809eaf82d2e38830ee77f10a76c7affb7f1d3fa5",
+  "primary_signal": "sam_disagreement",
+  "heldout_slices": 131,
+  "heldout_patients": 35,
+  "bootstrap": "10000 patient-cluster resamples",
+  "retuning_after_heldout": false
+}

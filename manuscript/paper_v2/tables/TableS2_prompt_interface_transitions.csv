@@ -1,0 +1,9 @@
+target,interface,original_vulnerable_n,original_non_vulnerable_n,rescued_n,persistent_n,new_vulnerability_n,stable_non_vulnerable_n,intervention_above_threshold_n
+range20,points_pos,27,86,9,18,62,24,80
+range20,points_pm,27,86,8,19,59,27,78
+range20,both_pos,27,86,4,23,47,39,70
+range20,both_pm,27,86,6,21,42,44,63
+range50,points_pos,17,96,11,6,48,48,54
+range50,points_pm,17,96,10,7,37,59,44
+range50,both_pos,17,96,10,7,9,87,16
+range50,both_pm,17,96,9,8,11,85,19

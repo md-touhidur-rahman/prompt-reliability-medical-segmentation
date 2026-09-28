@@ -1,0 +1,13 @@
+BREAST113 LEAVE-ONE-PROMPT-OUT GT-FREE WARNING
+
+B0: range20=0.994832, range50=0.994485, cat=0.973291, strict=0.848214
+B1: range20=0.989664, range50=0.996324, cat=0.973291, strict=0.848214
+B2: range20=0.987080, range50=0.992647, cat=0.965812, strict=0.925926
+B3: range20=0.994401, range50=0.993873, cat=0.972222, strict=0.946296
+B4: range20=0.993109, range50=0.995711, cat=0.975427, strict=0.936937
+B5: range20=0.969854, range50=0.995098, cat=0.982906, strict=0.950000
+
+mean range>=20pp = 0.988157
+mean range>=50pp = 0.994690
+mean cat.switch = 0.973825
+mean strict held-out failure = 0.909265

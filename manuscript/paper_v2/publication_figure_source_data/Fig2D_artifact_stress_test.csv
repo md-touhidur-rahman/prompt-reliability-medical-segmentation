@@ -1,0 +1,5 @@
+target,subset,auc,ci_low,ci_high,n
+Range20,All cases,0.994401,0.983673,1.0,113
+Range20,Non-gross,0.989203,0.969693,1.0,100
+Range50,All cases,0.996324,0.987634,1.0,113
+Range50,Non-gross,0.984375,0.955326,1.0,100

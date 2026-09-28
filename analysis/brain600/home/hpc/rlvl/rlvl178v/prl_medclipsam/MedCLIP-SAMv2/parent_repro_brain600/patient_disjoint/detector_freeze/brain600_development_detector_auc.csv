@@ -1,0 +1,9 @@
+target,signal,auc,n,events,nonevents
+range20,sam_disagreement,0.9806562465358607,469,97,372
+range20,coarse_disagreement,0.8454439640838045,469,97,372
+range20,sam_centroid_shift,0.9730074271145106,469,97,372
+range20,coarse_centroid_shift,0.8285389646380668,469,97,372
+range50,sam_disagreement,0.9886054250277301,469,47,422
+range50,coarse_disagreement,0.8475345366542301,469,47,422
+range50,sam_centroid_shift,0.9690430573762226,469,47,422
+range50,coarse_centroid_shift,0.8380054451951194,469,47,422

@@ -1,0 +1,9 @@
+{
+  "source_policy": "All manuscript artifacts generated from frozen pre-existing CSV result tables.",
+  "model_inference_performed": false,
+  "thresholds_selected_or_changed": false,
+  "frozen_source_files_modified": false,
+  "figures_generated": true,
+  "tables_generated": true,
+  "figure_source_data_generated": true
+}

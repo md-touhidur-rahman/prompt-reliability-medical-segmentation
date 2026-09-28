@@ -1,0 +1,25 @@
+{
+  "baseline_json": "saliency_maps/text_prompts/brain_tumors_testing.json",
+  "panel_manifest": "prompt_sensitivity_v2/controlled_prompt_panel.json",
+  "design": "Five controlled same-class author-prompt conditions",
+  "conditions": {
+    "P1": "prompt_sensitivity_v2/brain_controlled_P1.json",
+    "P2": "prompt_sensitivity_v2/brain_controlled_P2.json",
+    "P3": "prompt_sensitivity_v2/brain_controlled_P3.json",
+    "P4": "prompt_sensitivity_v2/brain_controlled_P4.json",
+    "P5": "prompt_sensitivity_v2/brain_controlled_P5.json"
+  },
+  "n_images": 600,
+  "n_conditions": 5,
+  "total_image_prompt_evaluations": 3000,
+  "fixed_parameters": {
+    "model": "finetuned BiomedCLIP",
+    "vvar": 0.3,
+    "vbeta": 2.0,
+    "vlayer": 9,
+    "seed": 12,
+    "postprocess": "kmeans + filter",
+    "sam": "vit_h",
+    "sam_prompt": "boxes"
+  }
+}

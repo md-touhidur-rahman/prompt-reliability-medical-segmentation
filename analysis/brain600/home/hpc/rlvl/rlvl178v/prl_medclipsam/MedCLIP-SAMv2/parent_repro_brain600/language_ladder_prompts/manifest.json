@@ -1,0 +1,28 @@
+{
+  "source": "MedCLIP-SAMv2/saliency_maps/text_prompts/brain_tumors_testing.json",
+  "design": {
+    "L3_semantic": "deterministic syntactic reformulation; descriptive tail preserved",
+    "L4_concise": "reporting/hedging language removed; lesion attributes and tumor identity retained",
+    "L5_broad": "tumor identity retained; case-specific morphology/location deliberately ablated"
+  },
+  "levels": {
+    "L3_semantic": {
+      "file": "MedCLIP-SAMv2/parent_repro_brain600/language_ladder_prompts/L3_semantic.json",
+      "sha256": "e0324e896c3685cdfe41befe383bfc5074208aa69c3239f6a5d3bac6af2cd6d1",
+      "n_entries": 600,
+      "n_unique": 57
+    },
+    "L4_concise": {
+      "file": "MedCLIP-SAMv2/parent_repro_brain600/language_ladder_prompts/L4_concise.json",
+      "sha256": "af7d58480cdc0fbd7795fdc0ad5fa0212ecb3c4b9b81fed328e601740b8aac59",
+      "n_entries": 600,
+      "n_unique": 51
+    },
+    "L5_broad": {
+      "file": "MedCLIP-SAMv2/parent_repro_brain600/language_ladder_prompts/L5_broad.json",
+      "sha256": "7bc0f2268c4ed680030dfa857838405bb7275ad1be250516381f892dc3973963",
+      "n_entries": 600,
+      "n_unique": 3
+    }
+  }
+}

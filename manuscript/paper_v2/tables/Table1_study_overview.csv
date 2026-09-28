@@ -1,0 +1,4 @@
+cohort,n_cases,n_conditions,role
+Breast113,113,6,Language-conditioned B0-B5 segmentation
+Brain600,600,6,Prompt/localization perturbation series
+Text3DSAM AMOS liver,30,4,Language-prompt robustness comparison

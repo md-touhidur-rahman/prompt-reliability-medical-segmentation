@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Environments / caches
+.venv/
+venv/
+env/
+.conda/
+.cache/
+hf_cache/
+medclipsam_hf_home/
+
+# Model weights / checkpoints
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.bin
+
+# Large numerical/model intermediates
+*.npy
+*.npz
+
+# Medical imaging / raw data
+*.nii
+*.nii.gz
+*.dcm
+*.dicom
+data/
+datasets/
+raw/
+raw_data/
+
+# Generated masks / intermediate outputs
+sam_checkpoints/
+checkpoints/
+proposal_cache/
+brain_proposal_cache/
+results_official/
+
+# Scheduler/runtime noise
+*.out
+*.err
+slurm-*.out
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*~
+*.swp

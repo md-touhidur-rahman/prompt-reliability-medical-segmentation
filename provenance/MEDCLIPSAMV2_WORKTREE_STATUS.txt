@@ -1,0 +1,68 @@
+ M biomedclip_finetuning/open_clip/src/open_clip/loss.py
+ M biomedclip_finetuning/open_clip/src/open_clip_train/precision.py
+ M postprocessing/postprocess_saliency_maps.py
+ M saliency_maps/generate_saliency_maps.py
+ M segment-anything/prompt_sam.py
+ M segment-anything/segment_anything/build_sam.py
+?? biomedclip_finetuning/open_clip/src/open_clip/loss.py.before_dhnnce_fix
+?? biomedclip_finetuning/open_clip/src/open_clip_train/precision.py.bak
+?? breast113_box_pairing_validation.sbatch
+?? breast113_box_pairing_validation_1824587.err
+?? breast113_box_pairing_validation_1824587.out
+?? breast113_box_pairing_validation_1824588.err
+?? breast113_box_pairing_validation_1824588.out
+?? breast113_box_smoke.sbatch
+?? breast113_box_smoke_1824584.err
+?? breast113_box_smoke_1824584.out
+?? breast113_prompt_interface_1824590.err
+?? breast113_prompt_interface_1824590.out
+?? breast113_prompt_interface_intervention.sbatch
+?? breast_sam_eval_1813394.err
+?? breast_sam_eval_1813394.out
+?? breast_sam_eval_1813395.err
+?? breast_sam_eval_1813395.out
+?? continue_official_breast.sbatch
+?? evaluation/__pycache__/
+?? finish_sam_breast.sbatch
+?? official_breast_1813376.err
+?? official_breast_1813376.out
+?? official_breast_1813378.err
+?? official_breast_1813378.out
+?? official_breast_1813383.err
+?? official_breast_1813383.out
+?? official_breast_1813384.err
+?? official_breast_1813384.out
+?? official_breast_1813385.err
+?? official_breast_1813385.out
+?? official_breast_1813386.err
+?? official_breast_1813386.out
+?? official_breast_1813387.err
+?? official_breast_1813387.out
+?? official_breast_finish_1813393.err
+?? official_breast_finish_1813393.out
+?? parent_repro_brain600/
+?? parent_repro_breast113/
+?? pipeline_core_for_chatgpt.txt
+?? pipeline_trace.txt
+?? prompt_interface_intervention/
+?? prompt_intervention_validation/
+?? prompt_sensitivity_v2/
+?? repo_tree.txt
+?? results_official/
+?? run_official_breast.sbatch
+?? saliency_maps/__pycache__/
+?? saliency_maps/generate_saliency_maps.py.AUTHORS_ORIGINAL
+?? saliency_maps/model/pytorch_model.bin
+?? saliency_maps/scripts/__pycache__/
+?? segment-anything/__pycache__/
+?? segment-anything/prompt_sam.py.pre_prompt_intervention
+?? segment-anything/prompt_sam.py.seeded_box_validated_20260928
+?? segment-anything/sam_checkpoints/
+?? segment-anything/segment_anything/__pycache__/
+?? segment-anything/segment_anything/build_sam.py.AUTHORS_ORIGINAL
+?? segment-anything/segment_anything/modeling/__pycache__/
+?? segment-anything/segment_anything/utils/__pycache__/
+?? train_biomedclip_authors_recipe_a100.sbatch
+?? train_biomedclip_v1_dhnfix_a100.sbatch
+?? train_biomedclip_v1_repro.sbatch
+?? v2_pipeline_for_chatgpt.txt

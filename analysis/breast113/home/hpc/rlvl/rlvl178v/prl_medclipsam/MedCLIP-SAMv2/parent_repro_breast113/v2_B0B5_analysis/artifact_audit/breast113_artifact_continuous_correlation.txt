@@ -1,0 +1,37 @@
+====================================================================================================
+BREAST113 — ARTIFACT-STRATIFIED CONTINUOUS DSC-RANGE ASSOCIATION
+====================================================================================================
+
+Frozen gross-spatial-disagreement definition:
+min pairwise SAM-mask IoU < 0.10
+
+====================================================================================================
+ALL: N=113 (gross=13, non-gross=100)
+====================================================================================================
+sam_disagreement         Pearson r=+0.9684   Spearman rho=+0.9682
+coarse_disagreement      Pearson r=+0.7856   Spearman rho=+0.6107
+sam_area_cv              Pearson r=+0.8259   Spearman rho=+0.9548
+centroid_disp_norm       Pearson r=+0.7867   Spearman rho=+0.9457
+
+====================================================================================================
+GROSS: N=13 (gross=13, non-gross=0)
+====================================================================================================
+sam_disagreement         Pearson r=+0.1519   Spearman rho=+0.4814
+coarse_disagreement      Pearson r=+0.2561   Spearman rho=+0.2971
+sam_area_cv              Pearson r=+0.4284   Spearman rho=+0.3494
+centroid_disp_norm       Pearson r=+0.2838   Spearman rho=+0.3549
+
+====================================================================================================
+NON_GROSS: N=100 (gross=0, non-gross=100)
+====================================================================================================
+sam_disagreement         Pearson r=+0.9436   Spearman rho=+0.9554
+coarse_disagreement      Pearson r=+0.6623   Spearman rho=+0.4897
+sam_area_cv              Pearson r=+0.8776   Spearman rho=+0.9522
+centroid_disp_norm       Pearson r=+0.8596   Spearman rho=+0.9247
+
+====================================================================================================
+GROUP DSC-RANGE SUMMARY
+====================================================================================================
+ALL        N=113 mean=0.1619 median=0.0174 max=0.9512
+GROSS      N= 13 mean=0.8271 median=0.9005 max=0.9512
+NON_GROSS  N=100 mean=0.0755 median=0.0115 max=0.6258

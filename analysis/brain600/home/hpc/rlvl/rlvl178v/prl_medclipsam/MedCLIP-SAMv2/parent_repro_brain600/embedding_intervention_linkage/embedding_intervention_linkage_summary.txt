@@ -1,0 +1,143 @@
+====================================================================================================
+MEDCLIP-SAMV2 — CONTROLLED EMBEDDING INTERVENTION ↔ SEGMENTATION VULNERABILITY
+====================================================================================================
+Joined cases = 600
+
+====================================================================================================
+TRUE SEGMENTATION VULNERABILITY PREVALENCE
+====================================================================================================
+range20                 : 123/600 =  20.50%
+range50                 :  55/600 =   9.17%
+catastrophic_switch     :  21/600 =   3.50%
+H0L5_loss20             :  43/600 =   7.17%
+H0L5_loss50             :  21/600 =   3.50%
+
+====================================================================================================
+CONTINUOUS ASSOCIATIONS
+====================================================================================================
+
+endpoint_disagreement
+  dsc_range            Pearson r=-0.0203 p=6.197e-01 | Spearman rho=+0.0020 p=9.609e-01
+  abs_delta_H0_L5      Pearson r=+0.0499 p=2.221e-01 | Spearman rho=+0.0495 p=2.264e-01
+  loss_H0_L5           Pearson r=+0.0702 p=8.588e-02 | Spearman rho=+0.1289 p=1.561e-03
+
+max_step_disagreement
+  dsc_range            Pearson r=-0.0117 p=7.750e-01 | Spearman rho=-0.0201 p=6.235e-01
+  abs_delta_H0_L5      Pearson r=+0.0602 p=1.408e-01 | Spearman rho=+0.0280 p=4.940e-01
+  loss_H0_L5           Pearson r=+0.0907 p=2.634e-02 | Spearman rho=+0.1119 p=6.058e-03
+
+trajectory_deviation
+  dsc_range            Pearson r=-0.0227 p=5.793e-01 | Spearman rho=-0.0497 p=2.246e-01
+  abs_delta_H0_L5      Pearson r=+0.0315 p=4.416e-01 | Spearman rho=+0.0177 p=6.650e-01
+  loss_H0_L5           Pearson r=+0.0633 p=1.213e-01 | Spearman rho=+0.0813 p=4.662e-02
+
+====================================================================================================
+VULNERABILITY DISCRIMINATION — AUROC
+====================================================================================================
+
+endpoint_disagreement
+  range20                  events=123/600 AUC=0.4808
+  range50                  events= 55/600 AUC=0.4777
+  catastrophic_switch      events= 21/600 AUC=0.5261
+  H0L5_loss20              events= 43/600 AUC=0.5355
+  H0L5_loss50              events= 21/600 AUC=0.6009
+
+max_step_disagreement
+  range20                  events=123/600 AUC=0.4827
+  range50                  events= 55/600 AUC=0.5223
+  catastrophic_switch      events= 21/600 AUC=0.5555
+  H0L5_loss20              events= 43/600 AUC=0.5707
+  H0L5_loss50              events= 21/600 AUC=0.6160
+
+trajectory_deviation
+  range20                  events=123/600 AUC=0.4717
+  range50                  events= 55/600 AUC=0.4973
+  catastrophic_switch      events= 21/600 AUC=0.5005
+  H0L5_loss20              events= 43/600 AUC=0.5327
+  H0L5_loss50              events= 21/600 AUC=0.5307
+
+====================================================================================================
+IMAGE-LEVEL BOOTSTRAP 95% CI — 10,000 RESAMPLES
+====================================================================================================
+
+endpoint_disagreement
+  dsc_range            Pearson=-0.0203 [-0.0994, +0.0637] | Spearman=+0.0020 [-0.0797, +0.0814]
+  abs_delta_H0_L5      Pearson=+0.0499 [-0.0416, +0.1426] | Spearman=+0.0495 [-0.0293, +0.1277]
+  loss_H0_L5           Pearson=+0.0702 [-0.0197, +0.1618] | Spearman=+0.1289 [+0.0500, +0.2068]
+  range20                  AUC=0.4808 95% CI [0.4264, 0.5378] events=123
+  range50                  AUC=0.4777 95% CI [0.3926, 0.5645] events=55
+  catastrophic_switch      AUC=0.5261 95% CI [0.3889, 0.6653] events=21
+  H0L5_loss20              AUC=0.5355 95% CI [0.4404, 0.6290] events=43
+  H0L5_loss50              AUC=0.6009 95% CI [0.4489, 0.7428] events=21
+
+max_step_disagreement
+  dsc_range            Pearson=-0.0117 [-0.0848, +0.0673] | Spearman=-0.0201 [-0.1015, +0.0592]
+  abs_delta_H0_L5      Pearson=+0.0602 [-0.0232, +0.1505] | Spearman=+0.0280 [-0.0520, +0.1061]
+  loss_H0_L5           Pearson=+0.0907 [+0.0018, +0.1857] | Spearman=+0.1119 [+0.0314, +0.1918]
+  range20                  AUC=0.4827 95% CI [0.4263, 0.5383] events=123
+  range50                  AUC=0.5223 95% CI [0.4316, 0.6109] events=55
+  catastrophic_switch      AUC=0.5555 95% CI [0.4230, 0.6845] events=21
+  H0L5_loss20              AUC=0.5707 95% CI [0.4709, 0.6665] events=43
+  H0L5_loss50              AUC=0.6160 95% CI [0.4581, 0.7632] events=21
+
+trajectory_deviation
+  dsc_range            Pearson=-0.0227 [-0.0985, +0.0620] | Spearman=-0.0497 [-0.1271, +0.0292]
+  abs_delta_H0_L5      Pearson=+0.0315 [-0.0621, +0.1372] | Spearman=+0.0177 [-0.0638, +0.0974]
+  loss_H0_L5           Pearson=+0.0633 [-0.0366, +0.1807] | Spearman=+0.0813 [+0.0003, +0.1601]
+  range20                  AUC=0.4717 95% CI [0.4155, 0.5282] events=123
+  range50                  AUC=0.4973 95% CI [0.4178, 0.5784] events=55
+  catastrophic_switch      AUC=0.5005 95% CI [0.3747, 0.6266] events=21
+  H0L5_loss20              AUC=0.5327 95% CI [0.4415, 0.6231] events=43
+  H0L5_loss50              AUC=0.5307 95% CI [0.4059, 0.6551] events=21
+
+====================================================================================================
+CONTROLLED ENDPOINT-DISAGREEMENT QUINTILES
+====================================================================================================
+Q1 N=120 | intervention-dis=0.0875 | mean DSC range= 14.65 pp | mean |H0-L5|=  7.67 pp | range>=20pp= 23.3% | range>=50pp= 11.7% | cat.switch=  3.3%
+Q2 N=120 | intervention-dis=0.1360 | mean DSC range= 13.76 pp | mean |H0-L5|=  6.27 pp | range>=20pp= 19.2% | range>=50pp= 10.0% | cat.switch=  4.2%
+Q3 N=120 | intervention-dis=0.1775 | mean DSC range= 13.68 pp | mean |H0-L5|=  6.02 pp | range>=20pp= 23.3% | range>=50pp=  6.7% | cat.switch=  1.7%
+Q4 N=120 | intervention-dis=0.2251 | mean DSC range= 13.87 pp | mean |H0-L5|=  7.65 pp | range>=20pp= 20.0% | range>=50pp=  7.5% | cat.switch=  3.3%
+Q5 N=120 | intervention-dis=0.3552 | mean DSC range= 12.97 pp | mean |H0-L5|=  9.49 pp | range>=20pp= 16.7% | range>=50pp= 10.0% | cat.switch=  5.0%
+
+====================================================================================================
+TOP 10% CONTROLLED INTERVENTION-RESPONSE GROUP
+====================================================================================================
+Threshold endpoint disagreement = 0.325285
+N = 60
+Mean DSC range = 13.07 pp
+Mean |H0-L5| DSC = 8.86 pp
+Range >=20pp = 16.67%
+Range >=50pp = 11.67%
+Catastrophic switch = 6.67%
+H0->L5 loss >=20pp = 8.33%
+H0->L5 loss >=50pp = 6.67%
+
+====================================================================================================
+FULLY MONOTONIC VS NON-MONOTONIC INTERVENTION TRAJECTORIES
+====================================================================================================
+Fully monotonic    N=546 | DSC range= 13.83 pp | |H0-L5|=  7.30 pp | range>=20pp= 20.9% | cat.switch=  3.3%
+Non-monotonic      N= 54 | DSC range= 13.28 pp | |H0-L5|=  8.61 pp | range>=20pp= 16.7% | cat.switch=  5.6%
+
+====================================================================================================
+TOP 20 CASES BY CONTROLLED ENDPOINT RESPONSE
+====================================================================================================
+01. 1644.png   | intervention-dis=0.7288 | max-step=0.5440 | traj-dev=0.1250 | DSC-range=  0.09 pp | H0= 90.97 | L5= 90.89 | Δ= -0.09 pp
+02. 1686.png   | intervention-dis=0.7014 | max-step=0.2749 | traj-dev=0.0351 | DSC-range=  0.12 pp | H0= 93.08 | L5= 93.20 | Δ= +0.12 pp
+03. 1834.png   | intervention-dis=0.6936 | max-step=0.2892 | traj-dev=0.0218 | DSC-range=  0.48 pp | H0= 92.65 | L5= 92.57 | Δ= -0.08 pp
+04. 1648.png   | intervention-dis=0.6310 | max-step=0.3394 | traj-dev=0.1071 | DSC-range=  0.14 pp | H0= 95.03 | L5= 95.12 | Δ= +0.10 pp
+05. 41.png     | intervention-dis=0.6166 | max-step=0.2375 | traj-dev=0.0298 | DSC-range=  0.09 pp | H0= 94.38 | L5= 94.36 | Δ= -0.02 pp
+06. 2364.png   | intervention-dis=0.5615 | max-step=0.2741 | traj-dev=0.0742 | DSC-range=  0.82 pp | H0= 88.51 | L5= 88.65 | Δ= +0.15 pp
+07. 2871.png   | intervention-dis=0.5312 | max-step=0.3772 | traj-dev=0.1301 | DSC-range=  0.26 pp | H0= 90.37 | L5= 90.62 | Δ= +0.25 pp
+08. 152.png    | intervention-dis=0.5213 | max-step=0.2419 | traj-dev=0.0257 | DSC-range=  0.13 pp | H0= 96.97 | L5= 96.90 | Δ= -0.07 pp
+09. 114.png    | intervention-dis=0.5056 | max-step=0.1726 | traj-dev=0.0093 | DSC-range=  0.08 pp | H0= 93.63 | L5= 93.55 | Δ= -0.08 pp
+10. 2846.png   | intervention-dis=0.4914 | max-step=0.2368 | traj-dev=0.0171 | DSC-range= 20.01 pp | H0= 81.63 | L5= 80.37 | Δ= -1.26 pp
+11. 2609.png   | intervention-dis=0.4902 | max-step=0.1701 | traj-dev=0.0048 | DSC-range= 56.92 pp | H0= 24.70 | L5= 81.63 | Δ=+56.92 pp
+12. 2723.png   | intervention-dis=0.4875 | max-step=0.1994 | traj-dev=0.0305 | DSC-range=  1.42 pp | H0= 61.71 | L5= 60.29 | Δ= -1.42 pp
+13. 1843.png   | intervention-dis=0.4655 | max-step=0.1509 | traj-dev=0.0209 | DSC-range= 17.01 pp | H0= 68.10 | L5= 85.10 | Δ=+17.01 pp
+14. 1600.png   | intervention-dis=0.4645 | max-step=0.2063 | traj-dev=0.0691 | DSC-range= 15.64 pp | H0= 75.08 | L5= 73.13 | Δ= -1.95 pp
+15. 518.png    | intervention-dis=0.4631 | max-step=0.1742 | traj-dev=0.0191 | DSC-range= 91.26 pp | H0= 91.17 | L5=  0.00 | Δ=-91.17 pp
+16. 2979.png   | intervention-dis=0.4529 | max-step=0.1899 | traj-dev=0.0101 | DSC-range=  4.36 pp | H0= 94.54 | L5= 90.55 | Δ= -4.00 pp
+17. 1955.png   | intervention-dis=0.4526 | max-step=0.2389 | traj-dev=0.0308 | DSC-range=  3.75 pp | H0= 85.15 | L5= 85.58 | Δ= +0.43 pp
+18. 1388.png   | intervention-dis=0.4511 | max-step=0.2010 | traj-dev=0.0506 | DSC-range=  6.95 pp | H0= 76.97 | L5= 75.45 | Δ= -1.52 pp
+19. 2933.png   | intervention-dis=0.4495 | max-step=0.2133 | traj-dev=0.0555 | DSC-range=  8.94 pp | H0= 81.60 | L5= 73.53 | Δ= -8.07 pp
+20. 2895.png   | intervention-dis=0.4452 | max-step=0.1780 | traj-dev=0.0121 | DSC-range=  1.04 pp | H0= 79.38 | L5= 78.34 | Δ= -1.04 pp

@@ -1,0 +1,26 @@
+{
+  "dataset": "Breast113",
+  "n_cases": 113,
+  "bases": [
+    "B0",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5"
+  ],
+  "interfaces": [
+    "box",
+    "points_pos",
+    "points_pm",
+    "both_pos",
+    "both_pm"
+  ],
+  "seed": 20260928,
+  "frozen_prompt_sam_sha256": "3101e4d13192c8efe12780b587dec1d1b2b92c26ffe13d4b81479b5022db473c",
+  "frozen_output_manifest_sha256": "7d60171a9827c778399cbccb1a69dfc01ff47d1a374ae4c08ec765db7edc57dc",
+  "casewise_csv": "/home/hpc/rlvl/rlvl178v/prl_medclipsam/MedCLIP-SAMv2/prompt_interface_intervention/breast113_evaluation/breast113_prompt_interface_casewise_dice.csv",
+  "summary_csv": "/home/hpc/rlvl/rlvl178v/prl_medclipsam/MedCLIP-SAMv2/prompt_interface_intervention/breast113_evaluation/breast113_prompt_interface_summary.csv",
+  "stability_csv": "/home/hpc/rlvl/rlvl178v/prl_medclipsam/MedCLIP-SAMv2/prompt_interface_intervention/breast113_evaluation/breast113_prompt_interface_stability.csv",
+  "evaluation_scope": "Single complete evaluation of the previously frozen prompt-interface intervention outputs."
+}

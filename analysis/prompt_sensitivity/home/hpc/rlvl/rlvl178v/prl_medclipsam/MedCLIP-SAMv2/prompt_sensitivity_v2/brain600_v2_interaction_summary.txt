@@ -1,0 +1,25 @@
+MEDCLIP-SAMV2 BRAIN600 IMAGE x PROMPT INTERACTION
+======================================================================
+
+N images = 600
+N prompts = 5
+N observations = 3000
+
+P1 mean DSC = 0.73509696
+P2 mean DSC = 0.72227041
+P3 mean DSC = 0.71363942
+P4 mean DSC = 0.70225451
+P5 mean DSC = 0.70948192
+
+SS image fraction = 0.76552648
+SS prompt fraction = 0.00227893
+SS interaction fraction = 0.23219460
+interaction RMS = 0.11415557
+Kendall W = 0.00490569
+best fixed prompt = P1
+oracle mean = 0.78249608
+oracle gain = 0.04739912
+mean within-case range = 0.14824527
+range >= .50 fraction = 0.10166667
+catastrophic-any fraction = 0.10833333
+catastrophic-to-80 rescue fraction = 0.04833333

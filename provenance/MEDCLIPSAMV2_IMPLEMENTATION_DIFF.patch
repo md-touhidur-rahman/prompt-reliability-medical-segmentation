@@ -1,0 +1,1359 @@
+diff --git a/biomedclip_finetuning/open_clip/src/open_clip/loss.py b/biomedclip_finetuning/open_clip/src/open_clip/loss.py
+index d83a169..0aa6507 100644
+--- a/biomedclip_finetuning/open_clip/src/open_clip/loss.py
++++ b/biomedclip_finetuning/open_clip/src/open_clip/loss.py
+@@ -132,14 +132,15 @@ class ClipLoss(nn.Module):
+     
+ class HardNegativeLoss(nn.Module):
+     """
+-    Hard Negative Noise Contrastive Estimation proposed in https://arxiv.org/abs/2301.02280
+-    beta1: hardness parameter for image features
+-    beta2: hardness parameter for text features
+-    alpha: the weighting function of the positive sample loss
+-    Setting alpha to 0, the loss is equivalent to the decoupled HN-NCE loss (DHN-NCE)
+-    temperature: temperature to control the sharpness of the distribution
++    DHN-NCE / HN-NCE loss.
++
++    Correct masking semantics:
++      - diagonal image-text pairs are positives
++      - diagonal is excluded from negative sums
++      - reduction is over B anchors, not BxB matrix entries
+     """
+-    def __init__(self, temperature=1.0,beta1=1.0, beta2 = 1.0, alpha=0.0, batch_size=1):
++    def __init__(self, temperature=1.0, beta1=1.0, beta2=1.0,
++                 alpha=0.0, batch_size=1):
+         super(HardNegativeLoss, self).__init__()
+         self.temperature = temperature
+         self.beta1 = beta1
+@@ -147,39 +148,81 @@ class HardNegativeLoss(nn.Module):
+         self.alpha = alpha
+         self.batch_size = batch_size
+ 
+-    def forward(self, image_features, text_features, logit_scale, output_dict=False):
+-        # Normalize features
++    def forward(self, image_features, text_features,
++                logit_scale, output_dict=False):
++
+         image_features = F.normalize(image_features, p=2, dim=1)
+         text_features = F.normalize(text_features, p=2, dim=1)
+ 
+-        # Compute cosine similarity between image and text features
+-        logits_per_image = torch.matmul(image_features, text_features.t()) / self.temperature
++        logits_per_image = (
++            torch.matmul(image_features, text_features.t())
++            / self.temperature
++        )
+         logits_per_text = logits_per_image.t()
+ 
+-        mask = torch.eye(logits_per_image.size(0), dtype=torch.bool)
+-        mask = mask.to(image_features.device)
++        B = logits_per_image.size(0)
+ 
+-        # Positive pairs: diagonal elements
+-        pos = torch.exp(logits_per_image*mask)
++        # For the reproduction run B must be the true physical batch.
++        N = B - 1
+ 
+-        # Negative pairs: off-diagonal elements
+-        N = self.batch_size - 1
++        eye = torch.eye(
++            B,
++            dtype=torch.bool,
++            device=image_features.device
++        )
+ 
+-        neg_mask = ~mask
++        # One positive for each anchor.
++        pos_img = torch.exp(torch.diagonal(logits_per_image))
++        pos_text = torch.exp(torch.diagonal(logits_per_text))
+ 
+-        # Calculate reweighting factors
+-        norm_term_img = torch.sum(torch.exp(logits_per_image*neg_mask),dim=-1)
+-        reweight_img = N * (torch.exp(self.beta1*logits_per_image*neg_mask))/norm_term_img
+-        norm_term_text = torch.sum(torch.exp(logits_per_text*neg_mask),dim=-1)
+-        reweight_text = N * (torch.exp(self.beta2*logits_per_text*neg_mask))/norm_term_text
++        # Exclude positive pair BEFORE exponentiation.
++        neg_logits_img = logits_per_image.masked_fill(
++            eye, float("-inf")
++        )
++        neg_logits_text = logits_per_text.masked_fill(
++            eye, float("-inf")
++        )
+ 
+-        neg_img = reweight_img * torch.exp(logits_per_image*neg_mask)
+-        neg_text = reweight_text * torch.exp(logits_per_text*neg_mask)
++        exp_neg_img = torch.exp(neg_logits_img)
++        exp_neg_text = torch.exp(neg_logits_text)
+ 
+-        # Calculate loss
+-        loss = -torch.log(pos / (pos*self.alpha + neg_img)) -torch.log(pos / (pos*self.alpha + neg_text))
++        norm_term_img = exp_neg_img.sum(dim=-1)
++        norm_term_text = exp_neg_text.sum(dim=-1)
+ 
+-        return {"contrastive_loss": loss.mean()} if output_dict else loss.mean()
++        reweight_img = (
++            N * torch.exp(self.beta1 * neg_logits_img)
++            / norm_term_img.unsqueeze(-1)
++        )
++        reweight_text = (
++            N * torch.exp(self.beta2 * neg_logits_text)
++            / norm_term_text.unsqueeze(-1)
++        )
++
++        # masked -inf positions can create 0 * 0 safely here,
++        # but nan_to_num protects the excluded diagonal explicitly.
++        neg_img = torch.nan_to_num(
++            reweight_img * exp_neg_img,
++            nan=0.0
++        ).sum(dim=-1)
++
++        neg_text = torch.nan_to_num(
++            reweight_text * exp_neg_text,
++            nan=0.0
++        ).sum(dim=-1)
++
++        loss_img = -torch.log(
++            pos_img / (self.alpha * pos_img + neg_img)
++        )
++        loss_text = -torch.log(
++            pos_text / (self.alpha * pos_text + neg_text)
++        )
++
++        loss = loss_img + loss_text
++
++        return (
++            {"contrastive_loss": loss.mean()}
++            if output_dict else loss.mean()
++        )
+ 
+ 
+ class CoCaLoss(ClipLoss):
+diff --git a/biomedclip_finetuning/open_clip/src/open_clip_train/precision.py b/biomedclip_finetuning/open_clip/src/open_clip_train/precision.py
+index 5af4948..fd46729 100644
+--- a/biomedclip_finetuning/open_clip/src/open_clip_train/precision.py
++++ b/biomedclip_finetuning/open_clip/src/open_clip_train/precision.py
+@@ -1,14 +1,18 @@
+-import torch
+ from contextlib import suppress
+ from functools import partial
++import torch
+ 
+ 
+ def get_autocast(precision, device_type='cuda'):
+-    if precision =='amp':
+-        amp_dtype = torch.float16
++    if precision == 'amp':
++        if hasattr(torch, "amp") and hasattr(torch.amp, "autocast"):
++            return partial(torch.amp.autocast, device_type=device_type)
++        return torch.cuda.amp.autocast
++
+     elif precision == 'amp_bfloat16' or precision == 'amp_bf16':
+-        amp_dtype = torch.bfloat16
++        if hasattr(torch, "amp") and hasattr(torch.amp, "autocast"):
++            return partial(torch.amp.autocast, device_type=device_type, dtype=torch.bfloat16)
++        return partial(torch.cuda.amp.autocast, dtype=torch.bfloat16)
++
+     else:
+         return suppress
+-
+-    return partial(torch.amp.autocast, device_type=device_type, dtype=amp_dtype)
+\ No newline at end of file
+diff --git a/postprocessing/postprocess_saliency_maps.py b/postprocessing/postprocess_saliency_maps.py
+index 64cdf59..8f3241b 100644
+--- a/postprocessing/postprocess_saliency_maps.py
++++ b/postprocessing/postprocess_saliency_maps.py
+@@ -1,195 +1,198 @@
+-import numpy as np
+-import cv2
+-import pydensecrf.densecrf as dcrf
+-import os
+-import argparse
+-from sklearn.cluster import KMeans
+-from tqdm import tqdm
+-
+-np.random.seed(10)
+-
+-def sigmoid(x):
+-    return 1 / (1 + np.exp(-x))
+-
+-def postprocess_crf(args):
+-    files = os.listdir(args.sal_path)
+-
+-    if (not os.path.exists(args.output_path)):
+-        os.makedirs(args.output_path)
+-
+-    for file in tqdm(files):
+-
+-        img = cv2.imread(args.input_path+'/'+file, 1)
+-        annos = cv2.imread(args.sal_path+'/'+file, 0)
+-        annos = cv2.resize(annos, (img.shape[1], img.shape[0]))
+-        output = args.output_path+'/'+file
+-
+-        # Setup the CRF model
+-        d = dcrf.DenseCRF2D(img.shape[1], img.shape[0], args.m)
+-
+-        anno_norm = annos / 255.
+-        n_energy = -np.log((1.0 - anno_norm + args.epsilon)) / (args.tau * sigmoid(1 - anno_norm))
+-        p_energy = -np.log(anno_norm + args.epsilon) / (args.tau * sigmoid(anno_norm))
+-
+-        U = np.zeros((args.m, img.shape[0] * img.shape[1]), dtype='float32')
+-        U[0, :] = n_energy.flatten()
+-        U[1, :] = p_energy.flatten()
+-
+-        d.setUnaryEnergy(U)
+-
+-        d.addPairwiseGaussian(sxy=args.gaussian_sxy, compat=3)
+-        d.addPairwiseBilateral(sxy=args.bilateral_sxy, srgb=args.bilateral_srgb, rgbim=img, compat=5)
+-
+-        # Do the inference
+-        Q = d.inference(1)
+-        map = np.argmax(Q, axis=0).reshape((img.shape[0], img.shape[1]))
+-
+-        # Save the output as image
+-        segmented_image = map.astype('uint8')*255
+-
+-        nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(segmented_image)
+-        sizes = stats[:, cv2.CC_STAT_AREA]
+-        
+-        # Sort sizes (ignoring the background at index 0)
+-        sorted_sizes = sorted(sizes[1:], reverse=True) 
+-        
+-        # Determine the top K sizes
+-        top_k_sizes = sorted_sizes[:args.num_contours]
+-        
+-        im_result = np.zeros_like(im_with_separated_blobs)
+-        
+-        for index_blob in range(1, nb_blobs):
+-            if sizes[index_blob] in top_k_sizes:
+-                im_result[im_with_separated_blobs == index_blob] = 255
+-        
+-        segmented_image = im_result
+-
+-        cv2.imwrite(output, segmented_image)
+-        
+-def postprocess_thresholding(args):
+-    files = os.listdir(args.sal_path)
+-
+-    if (not os.path.exists(args.output_path)):
+-        os.makedirs(args.output_path)
+-
+-    for file in tqdm(files):
+-
+-        annos = cv2.imread(args.sal_path+'/'+file, 0)
+-        output = args.output_path+'/'+file
+-
+-        annos = annos / 255.
+-        annos = (annos > args.threshold).astype(np.uint8)
+-        segmented_image = annos * 255
+-
+-        nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(segmented_image)
+-        sizes = stats[:, cv2.CC_STAT_AREA]
+-        
+-        # Sort sizes (ignoring the background at index 0)
+-        sorted_sizes = sorted(sizes[1:], reverse=True) 
+-        
+-        # Determine the top K sizes
+-        top_k_sizes = sorted_sizes[:args.num_contours]
+-        
+-        im_result = np.zeros_like(im_with_separated_blobs)
+-        
+-        for index_blob in range(1, nb_blobs):
+-            if sizes[index_blob] in top_k_sizes:
+-                im_result[im_with_separated_blobs == index_blob] = 255
+-        
+-        segmented_image = im_result
+-
+-        cv2.imwrite(output, segmented_image)
+-
+-def postprocess_kmeans(args):
+-    
+-    files = os.listdir(args.sal_path)
+-
+-    if (not os.path.exists(args.output_path)):
+-        os.makedirs(args.output_path)
+-
+-    for file in tqdm(files):
+-
+-        kmeans = KMeans(n_clusters=2,random_state=10)
+-        attn_weights = cv2.imread(args.sal_path+'/'+file, 0) / 255
+-        h, w = attn_weights.shape
+-        image = cv2.resize(attn_weights, (256, 256),interpolation=cv2.INTER_NEAREST)
+-        flat_image = image.reshape(-1, 1)
+-
+-        labels = kmeans.fit_predict(flat_image)
+-
+-        segmented_image = labels.reshape(256, 256)
+-
+-        centroids = kmeans.cluster_centers_.flatten()
+-
+-        # Identify the background cluster (assuming it has the lowest centroid value)
+-        background_cluster = np.argmin(centroids)
+-
+-        # Mark background pixels as 0 and foreground pixels as 1
+-        segmented_image = np.where(segmented_image == background_cluster, 0, 1)
+-
+-        segmented_image = cv2.resize(segmented_image, (w,h),interpolation=cv2.INTER_NEAREST)
+-        segmented_image = segmented_image.astype(np.uint8)*255
+-
+-        nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(segmented_image)
+-        sizes = stats[:, cv2.CC_STAT_AREA]
+-        
+-        # Sort sizes (ignoring the background at index 0)
+-        sorted_sizes = sorted(sizes[1:], reverse=True) 
+-        
+-        # Determine the top K sizes
+-        top_k_sizes = sorted_sizes[:args.num_contours]
+-        
+-        im_result = np.zeros_like(im_with_separated_blobs)
+-        
+-        for index_blob in range(1, nb_blobs):
+-            if sizes[index_blob] in top_k_sizes:
+-                im_result[im_with_separated_blobs == index_blob] = 255
+-        
+-        segmented_image = im_result
+-
+-        cv2.imwrite(args.output_path+'/'+file, segmented_image)
+-
+-
+-def get_parser():
+-    parser = argparse.ArgumentParser()
+-    
+-    parser.add_argument('--gaussian-sxy', type=int, default=5,
+-                        help="Gaussian sxy value for CRF")
+-    parser.add_argument('--bilateral-sxy', type=int, default=5,
+-                        help="Bilateral sxy value for CRF")
+-    parser.add_argument('--bilateral-srgb', type=int, default=3,
+-                        help="Bilateral srgb value for CRF")
+-    parser.add_argument('--epsilon', type=float, default=1e-8,
+-                        help="Epsilon value for CRF")
+-    parser.add_argument('--m', type=int, default=2,
+-                        help="Number of classes in the saliency map")
+-    parser.add_argument('--tau', type=float, default=1.05,
+-                        help="Tau value for CRF")
+-    parser.add_argument('--threshold', type=float, default=0.3,
+-                        help="Threshold value for thresholding")
+-    parser.add_argument('--input-path', type=str, default='images',
+-                        help="Path to the images")
+-    parser.add_argument('--sal-path', type=str, default='cams',
+-                        help="Path to the saliency maps")
+-    parser.add_argument('--output-path', type=str, default='output',
+-                        help="Output path of CRF postprocessed samples")
+-    parser.add_argument('--postprocess', type=str, default='kmeans', choices=['crf', 'thresholding', 'kmeans'],
+-                        help="Postprocessing method to use (crf/thresholding/kmeans)")
+-    parser.add_argument('--filter', action='store_true',
+-                        help="Whether to filter small clusters")
+-    parser.add_argument('--min-size', type=int, default=100,
+-                        help="Minimum size of clusters to keep")
+-    parser.add_argument('--num-contours', type=int, default=1, help="Number of contours to keep")
+-
+-    return parser.parse_args()
+-if __name__ == '__main__':
+-    args = get_parser()
+-    print("Postprocessing started...")
+-    if(args.postprocess == 'crf'):
+-        postprocess_crf(args)
+-    elif(args.postprocess == 'thresholding'):
+-        postprocess_thresholding(args)
+-    elif(args.postprocess == 'kmeans'):
+-        postprocess_kmeans(args)
+-    print("Postprocessing done!")
+-
++import numpy as np
++import cv2
++try:
++    import pydensecrf.densecrf as dcrf
++except ImportError:
++    dcrf = None
++import os
++import argparse
++from sklearn.cluster import KMeans
++from tqdm import tqdm
++
++np.random.seed(10)
++
++def sigmoid(x):
++    return 1 / (1 + np.exp(-x))
++
++def postprocess_crf(args):
++    files = os.listdir(args.sal_path)
++
++    if (not os.path.exists(args.output_path)):
++        os.makedirs(args.output_path)
++
++    for file in tqdm(files):
++
++        img = cv2.imread(args.input_path+'/'+file, 1)
++        annos = cv2.imread(args.sal_path+'/'+file, 0)
++        annos = cv2.resize(annos, (img.shape[1], img.shape[0]))
++        output = args.output_path+'/'+file
++
++        # Setup the CRF model
++        d = dcrf.DenseCRF2D(img.shape[1], img.shape[0], args.m)
++
++        anno_norm = annos / 255.
++        n_energy = -np.log((1.0 - anno_norm + args.epsilon)) / (args.tau * sigmoid(1 - anno_norm))
++        p_energy = -np.log(anno_norm + args.epsilon) / (args.tau * sigmoid(anno_norm))
++
++        U = np.zeros((args.m, img.shape[0] * img.shape[1]), dtype='float32')
++        U[0, :] = n_energy.flatten()
++        U[1, :] = p_energy.flatten()
++
++        d.setUnaryEnergy(U)
++
++        d.addPairwiseGaussian(sxy=args.gaussian_sxy, compat=3)
++        d.addPairwiseBilateral(sxy=args.bilateral_sxy, srgb=args.bilateral_srgb, rgbim=img, compat=5)
++
++        # Do the inference
++        Q = d.inference(1)
++        map = np.argmax(Q, axis=0).reshape((img.shape[0], img.shape[1]))
++
++        # Save the output as image
++        segmented_image = map.astype('uint8')*255
++
++        nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(segmented_image)
++        sizes = stats[:, cv2.CC_STAT_AREA]
++        
++        # Sort sizes (ignoring the background at index 0)
++        sorted_sizes = sorted(sizes[1:], reverse=True) 
++        
++        # Determine the top K sizes
++        top_k_sizes = sorted_sizes[:args.num_contours]
++        
++        im_result = np.zeros_like(im_with_separated_blobs)
++        
++        for index_blob in range(1, nb_blobs):
++            if sizes[index_blob] in top_k_sizes:
++                im_result[im_with_separated_blobs == index_blob] = 255
++        
++        segmented_image = im_result
++
++        cv2.imwrite(output, segmented_image)
++        
++def postprocess_thresholding(args):
++    files = os.listdir(args.sal_path)
++
++    if (not os.path.exists(args.output_path)):
++        os.makedirs(args.output_path)
++
++    for file in tqdm(files):
++
++        annos = cv2.imread(args.sal_path+'/'+file, 0)
++        output = args.output_path+'/'+file
++
++        annos = annos / 255.
++        annos = (annos > args.threshold).astype(np.uint8)
++        segmented_image = annos * 255
++
++        nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(segmented_image)
++        sizes = stats[:, cv2.CC_STAT_AREA]
++        
++        # Sort sizes (ignoring the background at index 0)
++        sorted_sizes = sorted(sizes[1:], reverse=True) 
++        
++        # Determine the top K sizes
++        top_k_sizes = sorted_sizes[:args.num_contours]
++        
++        im_result = np.zeros_like(im_with_separated_blobs)
++        
++        for index_blob in range(1, nb_blobs):
++            if sizes[index_blob] in top_k_sizes:
++                im_result[im_with_separated_blobs == index_blob] = 255
++        
++        segmented_image = im_result
++
++        cv2.imwrite(output, segmented_image)
++
++def postprocess_kmeans(args):
++    
++    files = os.listdir(args.sal_path)
++
++    if (not os.path.exists(args.output_path)):
++        os.makedirs(args.output_path)
++
++    for file in tqdm(files):
++
++        kmeans = KMeans(n_clusters=2,random_state=10)
++        attn_weights = cv2.imread(args.sal_path+'/'+file, 0) / 255
++        h, w = attn_weights.shape
++        image = cv2.resize(attn_weights, (256, 256),interpolation=cv2.INTER_NEAREST)
++        flat_image = image.reshape(-1, 1)
++
++        labels = kmeans.fit_predict(flat_image)
++
++        segmented_image = labels.reshape(256, 256)
++
++        centroids = kmeans.cluster_centers_.flatten()
++
++        # Identify the background cluster (assuming it has the lowest centroid value)
++        background_cluster = np.argmin(centroids)
++
++        # Mark background pixels as 0 and foreground pixels as 1
++        segmented_image = np.where(segmented_image == background_cluster, 0, 1)
++
++        segmented_image = cv2.resize(segmented_image, (w,h),interpolation=cv2.INTER_NEAREST)
++        segmented_image = segmented_image.astype(np.uint8)*255
++
++        nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(segmented_image)
++        sizes = stats[:, cv2.CC_STAT_AREA]
++        
++        # Sort sizes (ignoring the background at index 0)
++        sorted_sizes = sorted(sizes[1:], reverse=True) 
++        
++        # Determine the top K sizes
++        top_k_sizes = sorted_sizes[:args.num_contours]
++        
++        im_result = np.zeros_like(im_with_separated_blobs)
++        
++        for index_blob in range(1, nb_blobs):
++            if sizes[index_blob] in top_k_sizes:
++                im_result[im_with_separated_blobs == index_blob] = 255
++        
++        segmented_image = im_result
++
++        cv2.imwrite(args.output_path+'/'+file, segmented_image)
++
++
++def get_parser():
++    parser = argparse.ArgumentParser()
++    
++    parser.add_argument('--gaussian-sxy', type=int, default=5,
++                        help="Gaussian sxy value for CRF")
++    parser.add_argument('--bilateral-sxy', type=int, default=5,
++                        help="Bilateral sxy value for CRF")
++    parser.add_argument('--bilateral-srgb', type=int, default=3,
++                        help="Bilateral srgb value for CRF")
++    parser.add_argument('--epsilon', type=float, default=1e-8,
++                        help="Epsilon value for CRF")
++    parser.add_argument('--m', type=int, default=2,
++                        help="Number of classes in the saliency map")
++    parser.add_argument('--tau', type=float, default=1.05,
++                        help="Tau value for CRF")
++    parser.add_argument('--threshold', type=float, default=0.3,
++                        help="Threshold value for thresholding")
++    parser.add_argument('--input-path', type=str, default='images',
++                        help="Path to the images")
++    parser.add_argument('--sal-path', type=str, default='cams',
++                        help="Path to the saliency maps")
++    parser.add_argument('--output-path', type=str, default='output',
++                        help="Output path of CRF postprocessed samples")
++    parser.add_argument('--postprocess', type=str, default='kmeans', choices=['crf', 'thresholding', 'kmeans'],
++                        help="Postprocessing method to use (crf/thresholding/kmeans)")
++    parser.add_argument('--filter', action='store_true',
++                        help="Whether to filter small clusters")
++    parser.add_argument('--min-size', type=int, default=100,
++                        help="Minimum size of clusters to keep")
++    parser.add_argument('--num-contours', type=int, default=1, help="Number of contours to keep")
++
++    return parser.parse_args()
++if __name__ == '__main__':
++    args = get_parser()
++    print("Postprocessing started...")
++    if(args.postprocess == 'crf'):
++        postprocess_crf(args)
++    elif(args.postprocess == 'thresholding'):
++        postprocess_thresholding(args)
++    elif(args.postprocess == 'kmeans'):
++        postprocess_kmeans(args)
++    print("Postprocessing done!")
++
+diff --git a/saliency_maps/generate_saliency_maps.py b/saliency_maps/generate_saliency_maps.py
+index 98c774b..e31fab8 100644
+--- a/saliency_maps/generate_saliency_maps.py
++++ b/saliency_maps/generate_saliency_maps.py
+@@ -138,12 +138,12 @@ def main(args):
+     # Load the appropriate model based on the arguments
+     if(args.model_name == "BiomedCLIP" and args.finetuned):
+         model = AutoModel.from_pretrained("./saliency_maps/model", trust_remote_code=True).to(args.device)
+-        processor = AutoProcessor.from_pretrained("chuhac/BiomedCLIP-vit-bert-hf", trust_remote_code=True)
+-        tokenizer = AutoTokenizer.from_pretrained("chuhac/BiomedCLIP-vit-bert-hf", trust_remote_code=True)
++        processor = AutoProcessor.from_pretrained("/home/hpc/rlvl/rlvl178v/prl_medclipsam/chuhac_BiomedCLIP-vit-bert-hf", trust_remote_code=True)
++        tokenizer = AutoTokenizer.from_pretrained("/home/hpc/rlvl/rlvl178v/prl_medclipsam/chuhac_BiomedCLIP-vit-bert-hf", trust_remote_code=True)
+     elif(args.model_name == "BiomedCLIP" and not args.finetuned):
+-        model = AutoModel.from_pretrained("chuhac/BiomedCLIP-vit-bert-hf", trust_remote_code=True).to(args.device)
+-        processor = AutoProcessor.from_pretrained("chuhac/BiomedCLIP-vit-bert-hf", trust_remote_code=True)
+-        tokenizer = AutoTokenizer.from_pretrained("chuhac/BiomedCLIP-vit-bert-hf", trust_remote_code=True)
++        model = AutoModel.from_pretrained("/home/hpc/rlvl/rlvl178v/prl_medclipsam/chuhac_BiomedCLIP-vit-bert-hf", trust_remote_code=True).to(args.device)
++        processor = AutoProcessor.from_pretrained("/home/hpc/rlvl/rlvl178v/prl_medclipsam/chuhac_BiomedCLIP-vit-bert-hf", trust_remote_code=True)
++        tokenizer = AutoTokenizer.from_pretrained("/home/hpc/rlvl/rlvl178v/prl_medclipsam/chuhac_BiomedCLIP-vit-bert-hf", trust_remote_code=True)
+     elif(args.model_name == "CLIP" and not args.finetuned):
+         model = CLIPModel.from_pretrained("openai/clip-vit-base-patch16").to(args.device)
+         processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch16")
+diff --git a/segment-anything/prompt_sam.py b/segment-anything/prompt_sam.py
+index ed145cc..ac9d5a7 100644
+--- a/segment-anything/prompt_sam.py
++++ b/segment-anything/prompt_sam.py
+@@ -1,347 +1,415 @@
+-import numpy as np
+-import cv2
+-import os
+-import argparse
+-import random
+-import torch
+-from tqdm import tqdm
+-import matplotlib.pyplot as plt
+-from segment_anything import sam_model_registry, SamPredictor
+-import SimpleITK as sitk
+-
+-parser = argparse.ArgumentParser(
+-    description=(
+-        "Runs automatic mask generation on an input image or directory of images, "
+-        "and outputs masks"
+-    )
+-)
+-
+-parser.add_argument(
+-    "--input",
+-    type=str,
+-    required=True,
+-    help="Path to either a single input image or folder of images.",
+-)
+-
+-parser.add_argument(
+-    "--mask-input",
+-    type=str,
+-    required=True,
+-    help="Path to either a single crf mask image or folder of crf mask images.",
+-)
+-
+-parser.add_argument(
+-    "--output",
+-    type=str,
+-    required=True,
+-    help=(
+-        "Path to the directory where masks will be output. Output will be either a folder "
+-        "of PNGs per image or a single json with COCO-style masks."
+-    ),
+-)
+-
+-parser.add_argument(
+-    "--model-type",
+-    type=str,
+-    required=True,
+-    help="The type of model to load, in ['default', 'vit_h', 'vit_l', 'vit_b']",
+-)
+-
+-parser.add_argument(
+-    "--checkpoint",
+-    type=str,
+-    required=True,
+-    help="The path to the SAM checkpoint to use for mask generation.",
+-)
+-
+-parser.add_argument(
+-    "--prompts",
+-    type=str,
+-    required=True,
+-    help="The type of prompts to use, in ['points', 'boxes', 'both']",
+-)
+-
+-parser.add_argument(
+-    "--num-points",
+-    type=int,
+-    required=False,
+-    default=10,
+-    help="Number of points when using point prompts, default is 8",
+-)
+-
+-parser.add_argument(
+-    "--negative",
+-    action="store_true",
+-    help="Whether to sample points in the background. Default is False.",
+-)
+-
+-parser.add_argument(
+-    "--neg-num-points",
+-    type=int,
+-    required=False,
+-    default=10,
+-    help="Number of negative points when using negative mode, default is 20",
+-)
+-
+-parser.add_argument(
+-    "--pos-margin",
+-    type=float,
+-    required=False,
+-    default=10,
+-    help="controls the sampling margin for the positive point prompts, default is 2, for large structures use above 15, but \
+-    for smaller objects use 2-5",
+-)
+-
+-parser.add_argument(
+-    "--neg-margin",
+-    type=float,
+-    required=False,
+-    default=5,
+-    help="controls the sampling margin for the negative point prompts, default is 5",
+-)
+-
+-
+-parser.add_argument(
+-    "--multimask",
+-    action="store_true",
+-    help="Whether to output multimasks in SAM. Default is False.",
+-)
+-
+-parser.add_argument(
+-    "--multicontour",
+-    action="store_true",
+-    help="Whether to output multiple bounding boxes for each contour. Default is False.",
+-)
+-
+-parser.add_argument(
+-    "--voting",
+-    type=str,
+-    default="AVERAGE",
+-    help="['MRM','STAPLE','AVERAGE']",
+-)
+-
+-parser.add_argument(
+-    "--plot",
+-    action="store_true",
+-    help="Whether to plot the points and boxes in the contours. Default is False.",
+-)
+-
+-parser.add_argument("--device", type=str, default="cuda", help="The device to run generation on.")
+-
+-def write_mask_to_folder(mask , t_mask, path: str,num_contours) -> None:
+-    file = t_mask.split("/")[-1]
+-    filename = f"{file}"
+-    mask = cv2.threshold(mask, 0.5, 1, cv2.THRESH_BINARY)[1]
+-    mask = mask.astype(np.uint8)*255
+-    nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(mask)
+-    sizes = stats[:, cv2.CC_STAT_AREA]
+-    sorted_sizes = sorted(sizes[1:], reverse=True) 
+-
+-    # Determine the top K sizes
+-    top_k_sizes = sorted_sizes[:num_contours]
+-    
+-    im_result = np.zeros_like(im_with_separated_blobs)
+-    
+-    for index_blob in range(1, nb_blobs):
+-        if sizes[index_blob] in top_k_sizes:
+-            im_result[im_with_separated_blobs == index_blob] = 255
+-    mask = im_result
+-    cv2.imwrite(os.path.join(path, filename), mask)
+-
+-    return
+-
+-def scoremap2bbox(scoremap, multi_contour_eval=False):
+-    height, width = scoremap.shape
+-    scoremap_image = (scoremap * 255).astype(np.uint8)
+-    contours, _ = cv2.findContours(
+-        image=scoremap_image,
+-        mode=cv2.RETR_EXTERNAL,
+-        method=cv2.CHAIN_APPROX_SIMPLE)
+-    
+-    num_contours = len(contours)
+-
+-    if len(contours) == 0:
+-        return np.asarray([[0, 0, width, height]]), 1
+-    
+-
+-    if not multi_contour_eval:
+-        # contours = [max(contours, key=cv2.contourArea)]
+-        contours = [np.concatenate(contours)]
+-
+-    estimated_boxes = []
+-    for contour in contours:
+-        x, y, w, h = cv2.boundingRect(contour)
+-        x0, y0, x1, y1 = x, y, x + w, y + h
+-        x1 = min(x1, width - 1)
+-        y1 = min(y1, height - 1)
+-        estimated_boxes.append([x0, y0, x1, y1])
+-
+-    return estimated_boxes, contours,num_contours
+-
+-def get_prompts(mask, args):
+-    # List to store bounding boxes and random points
+-        bounding_boxes = []
+-        all_random_points = []
+-        all_input_labels = []
+-
+-        bounding_boxes, contours, num_contours = scoremap2bbox(mask, multi_contour_eval=args.multicontour)
+-        
+-        if(args.prompts == "boxes"):
+-            bounding_boxes = np.array(bounding_boxes)
+-            return np.zeros_like(bounding_boxes), np.zeros_like(bounding_boxes), bounding_boxes, num_contours
+-    
+-        pos_num_points = args.num_points  # number of positive random points to get per contour
+-        neg_num_points = args.neg_num_points  # number of negative random points to get per contour
+-        pos_random_points = []
+-        neg_random_points = []
+-        candidate_points = np.argwhere(mask.transpose(1,0) > 0)
+-        h,w = mask.shape
+-        random_index = np.random.choice(len(candidate_points), pos_num_points, replace=False)
+-        pos_random_points = candidate_points[random_index]
+-
+-        if(args.negative):
+-            # Filter some points
+-            candidate_points = np.argwhere(mask.transpose(1,0) == 0)
+-            random_index = np.random.choice(len(candidate_points), neg_num_points, replace=False)
+-            neg_random_points = candidate_points[random_index]
+-            all_random_points = np.concatenate([pos_random_points,neg_random_points])
+-            all_input_labels = [1]*len(pos_random_points) + [0]*len(neg_random_points)
+-        
+-        elif(not args.negative):
+-            all_random_points = pos_random_points
+-            all_input_labels = [1]*len(pos_random_points)
+-
+-        # Convert the lists to NumPy arrays
+-        all_random_points = np.array(all_random_points)
+-        all_input_labels = np.array(all_input_labels)
+-        bounding_boxes = np.array(bounding_boxes)
+-
+-        return all_random_points, all_input_labels, bounding_boxes, num_contours
+-    
+-def get_final_mask(predictor,all_random_points, all_input_labels, 
+-                   bounding_boxes, image, args):
+-    
+-    input_boxes = torch.tensor(bounding_boxes, device=args.device) 
+-    input_points = torch.tensor(all_random_points, device=args.device)
+-    input_labels = torch.tensor(all_input_labels, device=args.device)
+-    input_points = input_points.repeat((len(bounding_boxes),1,1))
+-    input_labels = input_labels.repeat((len(bounding_boxes),1))
+-
+-    predictor.set_image(image)
+-
+-    if(args.prompts == "both"):
+-        transformed_boxes = predictor.transform.apply_boxes_torch(input_boxes, image.shape[:2]) 
+-        transformed_points = predictor.transform.apply_coords_torch(input_points, image.shape[:2]) 
+-        masks, scores, _ = predictor.predict_torch(
+-            point_coords=transformed_points,
+-            point_labels=input_labels,
+-            boxes=transformed_boxes,
+-            multimask_output=args.multimask
+-        )
+-        masks = masks.cpu().numpy()
+-        scores = scores.cpu().numpy()
+-
+-    elif(args.prompts == "points"):
+-        masks, scores, _ = predictor.predict(
+-            point_coords=all_random_points,
+-            point_labels=all_input_labels,
+-            multimask_output=args.multimask,
+-        )
+-
+-    elif(args.prompts == "boxes"):
+-        input_boxes = torch.tensor(bounding_boxes, device=args.device)  
+-        transformed_boxes = predictor.transform.apply_boxes_torch(input_boxes, image.shape[:2])  
+-        masks, scores, _ = predictor.predict_torch(
+-            point_coords=None,
+-            point_labels=None,
+-            boxes=transformed_boxes,
+-            multimask_output=args.multimask
+-        )
+-        masks = masks.cpu().numpy()
+-        scores = scores.cpu().numpy()
+-
+-    if(args.multimask):
+-        if(args.voting == "MRM"):
+-            scores = np.expand_dims(scores, axis=-1)
+-            scores = np.expand_dims(scores, axis=-1)
+-            final_mask = (masks * scores).sum(axis=0)
+-            final_mask = (final_mask - final_mask.min()) / (final_mask.max() - final_mask.min())
+-        elif(args.voting == "STAPLE"):
+-            final_mask = []
+-            for i in range(masks.shape[0]):
+-                seg_sitk = sitk.GetImageFromArray(masks[i].astype(np.int16)) # STAPLE requires we cast into int16 arrays
+-                final_mask.append(seg_sitk)
+-
+-            # Run STAPLE algorithm
+-            final_mask_img = sitk.STAPLE(final_mask, 1.0 ) # 1.0 specifies the foreground value
+-
+-            # convert back to numpy array
+-            final_mask = sitk.GetArrayFromImage(final_mask_img)
+-
+-        elif(args.voting == "AVERAGE"):
+-            final_mask = np.mean(masks, axis=0)
+-    else:
+-        final_mask = np.squeeze(masks).astype(float)
+-
+-    if(final_mask.ndim == 3):
+-        final_mask = final_mask.sum(axis=0).clip(0, 1)
+-
+-    return final_mask
+-
+-def main(args: argparse.Namespace) -> None:
+-
+-    print("Segmenting images using SAM...")
+-    sam = sam_model_registry[args.model_type](checkpoint=args.checkpoint)
+-    _ = sam.to(device=args.device)
+-
+-    predictor = SamPredictor(sam)
+-
+-    if not os.path.isdir(args.input):
+-        targets = [args.input]
+-    else:
+-        targets = [
+-            f for f in os.listdir(args.input) if not os.path.isdir(os.path.join(args.input, f))
+-        ]
+-        targets = [os.path.join(args.input, f) for f in targets]
+-
+-    if not os.path.isdir(args.mask_input):
+-        targets_mask = [args.mask_input]
+-    else:
+-        targets_mask = [
+-            f for f in os.listdir(args.mask_input) if not os.path.isdir(os.path.join(args.mask_input, f))
+-        ]
+-        targets_mask = [os.path.join(args.mask_input, f) for f in targets_mask]
+-
+-    os.makedirs(args.output, exist_ok=True)
+-
+-    for t,t_mask in tqdm(zip(targets,targets_mask),total=len(targets)):
+-
+-        image = cv2.imread(t)
+-        if image is None:
+-            print(f"Could not load '{t}' as an image, skipping...")
+-            continue
+-
+-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+-
+-        mask = cv2.imread(t_mask, cv2.IMREAD_GRAYSCALE)
+-
+-        mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
+-
+-        all_random_points, all_input_labels, bounding_boxes, num_contours = get_prompts(mask, args)
+-
+-
+-        final_mask = get_final_mask(predictor,all_random_points, all_input_labels, 
+-                                    bounding_boxes, image,args)
+-
+-        base = os.path.basename(t)
+-        base = os.path.splitext(base)[0]
+-
+-        # Save the final mask
+-        write_mask_to_folder(final_mask, t_mask,args.output,num_contours)
+-    
+-    print("SAM Segmentation Done!")
+-
+-
+-if __name__ == "__main__":
+-    args = parser.parse_args()
++import numpy as np
++import cv2
++import os
++import argparse
++import random
++import torch
++from tqdm import tqdm
++import matplotlib.pyplot as plt
++from segment_anything import sam_model_registry, SamPredictor
++import SimpleITK as sitk
++import hashlib
++
++parser = argparse.ArgumentParser(
++    description=(
++        "Runs automatic mask generation on an input image or directory of images, "
++        "and outputs masks"
++    )
++)
++
++parser.add_argument(
++    "--input",
++    type=str,
++    required=True,
++    help="Path to either a single input image or folder of images.",
++)
++
++parser.add_argument(
++    "--mask-input",
++    type=str,
++    required=True,
++    help="Path to either a single crf mask image or folder of crf mask images.",
++)
++
++parser.add_argument(
++    "--output",
++    type=str,
++    required=True,
++    help=(
++        "Path to the directory where masks will be output. Output will be either a folder "
++        "of PNGs per image or a single json with COCO-style masks."
++    ),
++)
++
++parser.add_argument(
++    "--model-type",
++    type=str,
++    required=True,
++    help="The type of model to load, in ['default', 'vit_h', 'vit_l', 'vit_b']",
++)
++
++parser.add_argument(
++    "--checkpoint",
++    type=str,
++    required=True,
++    help="The path to the SAM checkpoint to use for mask generation.",
++)
++
++parser.add_argument(
++    "--prompts",
++    type=str,
++    required=True,
++    help="The type of prompts to use, in ['points', 'boxes', 'both']",
++)
++
++parser.add_argument(
++    "--num-points",
++    type=int,
++    required=False,
++    default=10,
++    help="Number of points when using point prompts, default is 8",
++)
++
++parser.add_argument(
++    "--negative",
++    action="store_true",
++    help="Whether to sample points in the background. Default is False.",
++)
++
++parser.add_argument(
++    "--neg-num-points",
++    type=int,
++    required=False,
++    default=10,
++    help="Number of negative points when using negative mode, default is 20",
++)
++
++parser.add_argument(
++    "--pos-margin",
++    type=float,
++    required=False,
++    default=10,
++    help="controls the sampling margin for the positive point prompts, default is 2, for large structures use above 15, but \
++    for smaller objects use 2-5",
++)
++
++parser.add_argument(
++    "--neg-margin",
++    type=float,
++    required=False,
++    default=5,
++    help="controls the sampling margin for the negative point prompts, default is 5",
++)
++
++
++parser.add_argument(
++    "--seed",
++    type=int,
++    required=False,
++    default=20260928,
++    help="Random seed for deterministic point-prompt sampling.",
++)
++
++parser.add_argument(
++    "--multimask",
++    action="store_true",
++    help="Whether to output multimasks in SAM. Default is False.",
++)
++
++parser.add_argument(
++    "--multicontour",
++    action="store_true",
++    help="Whether to output multiple bounding boxes for each contour. Default is False.",
++)
++
++parser.add_argument(
++    "--voting",
++    type=str,
++    default="AVERAGE",
++    help="['MRM','STAPLE','AVERAGE']",
++)
++
++parser.add_argument(
++    "--plot",
++    action="store_true",
++    help="Whether to plot the points and boxes in the contours. Default is False.",
++)
++
++parser.add_argument("--device", type=str, default="cuda", help="The device to run generation on.")
++
++def write_mask_to_folder(mask , t_mask, path: str,num_contours) -> None:
++    file = t_mask.split("/")[-1]
++    filename = f"{file}"
++    mask = cv2.threshold(mask, 0.5, 1, cv2.THRESH_BINARY)[1]
++    mask = mask.astype(np.uint8)*255
++    nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(mask)
++    sizes = stats[:, cv2.CC_STAT_AREA]
++    sorted_sizes = sorted(sizes[1:], reverse=True) 
++
++    # Determine the top K sizes
++    top_k_sizes = sorted_sizes[:num_contours]
++    
++    im_result = np.zeros_like(im_with_separated_blobs)
++    
++    for index_blob in range(1, nb_blobs):
++        if sizes[index_blob] in top_k_sizes:
++            im_result[im_with_separated_blobs == index_blob] = 255
++    mask = im_result
++    cv2.imwrite(os.path.join(path, filename), mask)
++
++    return
++
++def scoremap2bbox(scoremap, multi_contour_eval=False):
++    height, width = scoremap.shape
++    scoremap_image = (scoremap * 255).astype(np.uint8)
++    contours, _ = cv2.findContours(
++        image=scoremap_image,
++        mode=cv2.RETR_EXTERNAL,
++        method=cv2.CHAIN_APPROX_SIMPLE)
++    
++    num_contours = len(contours)
++
++    if len(contours) == 0:
++        return np.asarray([[0, 0, width, height]]), 1
++    
++
++    if not multi_contour_eval:
++        # contours = [max(contours, key=cv2.contourArea)]
++        contours = [np.concatenate(contours)]
++
++    estimated_boxes = []
++    for contour in contours:
++        x, y, w, h = cv2.boundingRect(contour)
++        x0, y0, x1, y1 = x, y, x + w, y + h
++        x1 = min(x1, width - 1)
++        y1 = min(y1, height - 1)
++        estimated_boxes.append([x0, y0, x1, y1])
++
++    return estimated_boxes, contours,num_contours
++
++def get_prompts(mask, args, rng=None):
++    if rng is None:
++        rng = np.random
++
++    # List to store bounding boxes and random points
++    bounding_boxes = []
++    all_random_points = []
++    all_input_labels = []
++
++    bounding_boxes, contours, num_contours = scoremap2bbox(
++        mask, multi_contour_eval=args.multicontour
++    )
++
++    if args.prompts == "boxes":
++        bounding_boxes = np.array(bounding_boxes)
++        return (
++            np.zeros_like(bounding_boxes),
++            np.zeros_like(bounding_boxes),
++            bounding_boxes,
++            num_contours,
++        )
++
++    pos_num_points = args.num_points
++    neg_num_points = args.neg_num_points
++
++    candidate_points = np.argwhere(mask.transpose(1, 0) > 0)
++    random_index = rng.choice(
++        len(candidate_points), pos_num_points, replace=False
++    )
++    pos_random_points = candidate_points[random_index]
++
++    if args.negative:
++        candidate_points = np.argwhere(mask.transpose(1, 0) == 0)
++        random_index = rng.choice(
++            len(candidate_points), neg_num_points, replace=False
++        )
++        neg_random_points = candidate_points[random_index]
++
++        all_random_points = np.concatenate(
++            [pos_random_points, neg_random_points]
++        )
++        all_input_labels = (
++            [1] * len(pos_random_points)
++            + [0] * len(neg_random_points)
++        )
++    else:
++        all_random_points = pos_random_points
++        all_input_labels = [1] * len(pos_random_points)
++
++    all_random_points = np.array(all_random_points)
++    all_input_labels = np.array(all_input_labels)
++    bounding_boxes = np.array(bounding_boxes)
++
++    return (
++        all_random_points,
++        all_input_labels,
++        bounding_boxes,
++        num_contours,
++    )
++
++def get_final_mask(predictor,all_random_points, all_input_labels, 
++                   bounding_boxes, image, args):
++    
++    input_boxes = torch.tensor(bounding_boxes, device=args.device) 
++    input_points = torch.tensor(all_random_points, device=args.device)
++    input_labels = torch.tensor(all_input_labels, device=args.device)
++    input_points = input_points.repeat((len(bounding_boxes),1,1))
++    input_labels = input_labels.repeat((len(bounding_boxes),1))
++
++    predictor.set_image(image)
++
++    if(args.prompts == "both"):
++        transformed_boxes = predictor.transform.apply_boxes_torch(input_boxes, image.shape[:2]) 
++        transformed_points = predictor.transform.apply_coords_torch(input_points, image.shape[:2]) 
++        masks, scores, _ = predictor.predict_torch(
++            point_coords=transformed_points,
++            point_labels=input_labels,
++            boxes=transformed_boxes,
++            multimask_output=args.multimask
++        )
++        masks = masks.cpu().numpy()
++        scores = scores.cpu().numpy()
++
++    elif(args.prompts == "points"):
++        masks, scores, _ = predictor.predict(
++            point_coords=all_random_points,
++            point_labels=all_input_labels,
++            multimask_output=args.multimask,
++        )
++
++    elif(args.prompts == "boxes"):
++        input_boxes = torch.tensor(bounding_boxes, device=args.device)  
++        transformed_boxes = predictor.transform.apply_boxes_torch(input_boxes, image.shape[:2])  
++        masks, scores, _ = predictor.predict_torch(
++            point_coords=None,
++            point_labels=None,
++            boxes=transformed_boxes,
++            multimask_output=args.multimask
++        )
++        masks = masks.cpu().numpy()
++        scores = scores.cpu().numpy()
++
++    if(args.multimask):
++        if(args.voting == "MRM"):
++            scores = np.expand_dims(scores, axis=-1)
++            scores = np.expand_dims(scores, axis=-1)
++            final_mask = (masks * scores).sum(axis=0)
++            final_mask = (final_mask - final_mask.min()) / (final_mask.max() - final_mask.min())
++        elif(args.voting == "STAPLE"):
++            final_mask = []
++            for i in range(masks.shape[0]):
++                seg_sitk = sitk.GetImageFromArray(masks[i].astype(np.int16)) # STAPLE requires we cast into int16 arrays
++                final_mask.append(seg_sitk)
++
++            # Run STAPLE algorithm
++            final_mask_img = sitk.STAPLE(final_mask, 1.0 ) # 1.0 specifies the foreground value
++
++            # convert back to numpy array
++            final_mask = sitk.GetArrayFromImage(final_mask_img)
++
++        elif(args.voting == "AVERAGE"):
++            final_mask = np.mean(masks, axis=0)
++    else:
++        final_mask = np.squeeze(masks).astype(float)
++
++    if(final_mask.ndim == 3):
++        final_mask = final_mask.sum(axis=0).clip(0, 1)
++
++    return final_mask
++
++def main(args: argparse.Namespace) -> None:
++
++    # Deterministic point-prompt sampling.
++    np.random.seed(args.seed)
++    random.seed(args.seed)
++    torch.manual_seed(args.seed)
++    if torch.cuda.is_available():
++        torch.cuda.manual_seed_all(args.seed)
++
++    print(f"Random seed: {args.seed}")
++    print("Segmenting images using SAM...")
++    sam = sam_model_registry[args.model_type](checkpoint=args.checkpoint)
++    _ = sam.to(device=args.device)
++
++    predictor = SamPredictor(sam)
++
++    if not os.path.isdir(args.input):
++        targets = [args.input]
++    else:
++        targets = [
++            os.path.join(args.input, f)
++            for f in sorted(os.listdir(args.input))
++            if not os.path.isdir(os.path.join(args.input, f))
++        ]
++
++    if not os.path.isdir(args.mask_input):
++        targets_mask = [args.mask_input]
++    else:
++        mask_by_name = {
++            f: os.path.join(args.mask_input, f)
++            for f in os.listdir(args.mask_input)
++            if not os.path.isdir(os.path.join(args.mask_input, f))
++        }
++
++        targets_mask = []
++        for t in targets:
++            name = os.path.basename(t)
++            if name not in mask_by_name:
++                raise FileNotFoundError(
++                    f"No mask with matching filename for image: {name}"
++                )
++            targets_mask.append(mask_by_name[name])
++
++    if len(targets) != len(targets_mask):
++        raise RuntimeError(
++            f"Image/mask count mismatch: {len(targets)} images, "
++            f"{len(targets_mask)} masks"
++        )
++
++    os.makedirs(args.output, exist_ok=True)
++
++    for t,t_mask in tqdm(zip(targets,targets_mask),total=len(targets)):
++
++        image = cv2.imread(t)
++        if image is None:
++            print(f"Could not load '{t}' as an image, skipping...")
++            continue
++
++        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
++
++        mask = cv2.imread(t_mask, cv2.IMREAD_GRAYSCALE)
++
++        mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
++
++        # Case-specific deterministic RNG:
++        # sampling depends only on the frozen global seed and filename,
++        # not on directory enumeration or previously processed cases.
++        case_name = os.path.basename(t)
++        seed_material = f"{args.seed}:{case_name}".encode("utf-8")
++        case_seed = int.from_bytes(
++            hashlib.sha256(seed_material).digest()[:4],
++            byteorder="little",
++            signed=False,
++        )
++        case_rng = np.random.RandomState(case_seed)
++
++        all_random_points, all_input_labels, bounding_boxes, num_contours = get_prompts(
++            mask, args, rng=case_rng
++        )
++
++
++        final_mask = get_final_mask(predictor,all_random_points, all_input_labels, 
++                                    bounding_boxes, image,args)
++
++        base = os.path.basename(t)
++        base = os.path.splitext(base)[0]
++
++        # Save the final mask
++        write_mask_to_folder(final_mask, t_mask,args.output,num_contours)
++    
++    print("SAM Segmentation Done!")
++
++
++if __name__ == "__main__":
++    args = parser.parse_args()
+     main(args)
+\ No newline at end of file
+diff --git a/segment-anything/segment_anything/build_sam.py b/segment-anything/segment_anything/build_sam.py
+index a0fcc5a..72dd32e 100644
+--- a/segment-anything/segment_anything/build_sam.py
++++ b/segment-anything/segment_anything/build_sam.py
+@@ -102,6 +102,6 @@ def _build_sam(
+     sam.eval()
+     if checkpoint is not None:
+         with open(checkpoint, "rb") as f:
+-            state_dict = torch.load(f, weights_only=True)
++            state_dict = torch.load(f)
+         sam.load_state_dict(state_dict)
+     return sam

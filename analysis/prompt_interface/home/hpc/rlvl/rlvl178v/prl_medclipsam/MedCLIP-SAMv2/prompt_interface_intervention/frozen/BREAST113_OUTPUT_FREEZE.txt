@@ -1,0 +1,13 @@
+BREAST113 PROMPT-INTERFACE INTERVENTION OUTPUT FREEZE
+
+Date: 2026-09-28
+Global seed: 20260928
+Frozen prompt_sam SHA256: 3101e4d13192c8efe12780b587dec1d1b2b92c26ffe13d4b81479b5022db473c
+Conditions: 24
+Cases per condition: 113
+Total generated masks: 2712
+Output manifest SHA256: 7d60171a9827c778399cbccb1a69dfc01ff47d1a374ae4c08ec765db7edc57dc
+
+All intervention masks were generated before outcome evaluation.
+Do not regenerate, modify, replace, or selectively exclude intervention
+outputs after examining segmentation-performance results.

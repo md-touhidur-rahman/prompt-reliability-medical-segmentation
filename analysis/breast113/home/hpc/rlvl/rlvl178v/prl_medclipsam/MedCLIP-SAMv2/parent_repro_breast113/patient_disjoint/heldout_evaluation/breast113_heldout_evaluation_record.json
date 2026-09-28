@@ -1,0 +1,94 @@
+{
+  "analysis": "Breast113 one-shot historical UDIAT test evaluation",
+  "bootstrap": "10,000 replicate duplicate-content-group bootstrap; not claimed as patient-cluster bootstrap because verified patient identifiers are unavailable",
+  "frozen_spec_sha256": "74121d0fbdd4cd84aeda389c3277399ce5b5dc0dd023992de5d83c8bbd5b2468",
+  "heldout_n": 67,
+  "heldout_split": "test",
+  "signal": "sam_disagreement",
+  "targets": {
+    "range20": {
+      "bootstrap_ci_95": {
+        "accuracy": [
+          0.855072463768116,
+          0.9848484848484849
+        ],
+        "auc": [
+          0.9704472025216706,
+          1.0
+        ],
+        "npv": [
+          0.8653846153846154,
+          1.0
+        ],
+        "ppv": [
+          0.7,
+          1.0
+        ],
+        "sensitivity": [
+          0.6427857142857144,
+          1.0
+        ],
+        "specificity": [
+          0.8947368421052632,
+          1.0
+        ]
+      },
+      "events": 18,
+      "metrics": {
+        "accuracy": 0.9253731343283582,
+        "auc": 0.9909297052154196,
+        "fn": 3,
+        "fp": 2,
+        "npv": 0.94,
+        "ppv": 0.8823529411764706,
+        "sensitivity": 0.8333333333333334,
+        "specificity": 0.9591836734693877,
+        "tn": 47,
+        "tp": 15
+      },
+      "threshold": 0.2351772523646177
+    },
+    "range50": {
+      "bootstrap_ci_95": {
+        "accuracy": [
+          0.9538461538461539,
+          1.0
+        ],
+        "auc": [
+          0.9912917271407837,
+          1.0
+        ],
+        "npv": [
+          0.9433962264150944,
+          1.0
+        ],
+        "ppv": [
+          1.0,
+          1.0
+        ],
+        "sensitivity": [
+          0.7272727272727273,
+          1.0
+        ],
+        "specificity": [
+          1.0,
+          1.0
+        ]
+      },
+      "events": 12,
+      "metrics": {
+        "accuracy": 0.9850746268656716,
+        "auc": 0.9984848484848485,
+        "fn": 1,
+        "fp": 0,
+        "npv": 0.9821428571428571,
+        "ppv": 1.0,
+        "sensitivity": 0.9166666666666666,
+        "specificity": 1.0,
+        "tn": 55,
+        "tp": 11
+      },
+      "threshold": 0.448225860615337
+    }
+  }
+}

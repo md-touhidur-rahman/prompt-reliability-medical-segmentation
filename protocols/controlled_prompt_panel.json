@@ -1,0 +1,73 @@
+{
+  "experiment": "MedCLIP-SAMv2 brain prompt sensitivity",
+  "selection_method": "Five approximately equally spaced entries from each author-provided P3 prompt list. Selection is deterministic and independent of segmentation performance.",
+  "n_prompts_per_class": 5,
+  "panel": {
+    "glioma": [
+      {
+        "author_index_1based": 1,
+        "prompt": "A medical brain MRI scan showing an infiltrative, irregularly shaped mass suggestive of a glioma tumor."
+      },
+      {
+        "author_index_1based": 6,
+        "prompt": "A brain MRI revealing a heterogeneous, irregular mass potentially indicative of a glioma tumor."
+      },
+      {
+        "author_index_1based": 11,
+        "prompt": "A brain MRI displaying an infiltrative mass with indistinct margins suggestive of a glioma tumor."
+      },
+      {
+        "author_index_1based": 16,
+        "prompt": "A brain imaging study showing an irregularly shaped, invasive mass suggestive of a glioma tumor."
+      },
+      {
+        "author_index_1based": 21,
+        "prompt": "A brain imaging study revealing a diffuse, infiltrative mass suggestive of a glioma tumor."
+      }
+    ],
+    "meningioma": [
+      {
+        "author_index_1based": 1,
+        "prompt": "A medical brain MRI scan showing a well-circumscribed, extra-axial mass suggestive of a meningioma tumor."
+      },
+      {
+        "author_index_1based": 6,
+        "prompt": "A brain imaging scan showing a well-marginated, dural-based mass suggestive of a meningioma tumor."
+      },
+      {
+        "author_index_1based": 11,
+        "prompt": "A brain MRI revealing a dural-based, homogenous mass suggestive of a meningioma tumor."
+      },
+      {
+        "author_index_1based": 15,
+        "prompt": "A brain imaging study showing a homogenous, dural-based mass suggestive of a meningioma tumor."
+      },
+      {
+        "author_index_1based": 20,
+        "prompt": "A brain imaging study revealing a well-defined, extra-axial mass suggestive of a meningioma tumor."
+      }
+    ],
+    "pituitary": [
+      {
+        "author_index_1based": 1,
+        "prompt": "A medical brain MRI scan showing a well-defined, sellar mass suggestive of a pituitary tumor."
+      },
+      {
+        "author_index_1based": 6,
+        "prompt": "A brain imaging scan showing a smoothly contoured, sellar mass suggestive of a pituitary tumor."
+      },
+      {
+        "author_index_1based": 11,
+        "prompt": "A brain MRI revealing a sharply defined, sellar mass suggestive of a pituitary tumor."
+      },
+      {
+        "author_index_1based": 15,
+        "prompt": "A brain imaging study showing a sharply circumscribed, pituitary mass suggestive of a pituitary tumor."
+      },
+      {
+        "author_index_1based": 20,
+        "prompt": "A brain imaging study revealing a well-circumscribed, sellar mass suggestive of a pituitary tumor."
+      }
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+FINAL ANALYSIS CLOSURE
+======================
+
+WILSON 95% CONFIDENCE INTERVALS
+
+7/600 failure-success switches:
+point = 1.167%
+95% Wilson CI = [0.566%, 2.388%]
+
+3/322 failure-success switches among H0>=.80:
+point = 0.932%
+95% Wilson CI = [0.317%, 2.703%]
+
+
+DEFINITIONS — FROZEN
+
+Let D_i,p denote Dice for case i under language condition p.
+
+Case-level range:
+    S_range(i) = max_p D_i,p - min_p D_i,p
+
+Mean pairwise absolute sensitivity:
+    S_pair(i) = mean_{p<q} |D_i,p - D_i,q|
+
+Globally best fixed description:
+    p* = argmax_p mean_i D_i,p
+
+Retrospective case-specific oracle:
+    O_i = max_p D_i,p
+
+Recoverability relative to the globally best fixed description:
+    R_i = O_i - D_i,p*
+
+Dataset-level oracle advantage:
+    mean_i O_i - max_p mean_i D_i,p
+
+Failure-success switch (used across prompt-set sizes):
+    min_p D_i,p < 0.10 AND max_p D_i,p >= 0.50
+
+P20 catastrophic-tail pattern:
+    median_p D_i,p >= 0.50 AND min_p D_i,p < 0.10
+
+The failure-success switch is comparable across P20 and H0/H1/H2.
+The P20 catastrophic-tail pattern is a separate distributional descriptor
+that is particularly meaningful with 20 descriptions and must not be
+silently equated with the three-condition statistic.
+
+All oracle quantities are retrospective GT-based diagnostics and are NOT
+deployable prompt-selection performance.
+
+
+REPRESENTATIVE H0/H1/H2 PROMPTS
+===============================
+
+100.png
+H0: A brain imaging study showing a homogenous, dural-based mass suggestive of a meningioma tumor.
+H1: A brain imaging study demonstrating a homogenous, dural-based mass suggestive of a meningioma tumor.
+H2: A brain MRI demonstrating a homogenous, dural-based mass suggestive of a meningioma tumor.
+
+2982.png
+H0: A medical brain MRI scan showing an infiltrative, irregularly shaped mass suggestive of a glioma tumor.
+H1: A medical brain MRI scan demonstrating an infiltrative, irregularly shaped mass suggestive of a glioma tumor.
+H2: A brain MRI demonstrating an infiltrative, irregularly shaped mass suggestive of a glioma tumor.
+
+1401.png
+H0: A brain imaging study revealing a well-marginated, pituitary mass likely representing a pituitary tumor.
+H1: A brain imaging study demonstrating a well-marginated, pituitary mass likely representing a pituitary tumor.
+H2: A brain MRI demonstrating a well-marginated, pituitary mass likely representing a pituitary tumor.
+
+
+COHORT PROVENANCE — FROZEN
+
+Brain400:
+The controlled P20 Brain experiment used the 400-image test partition
+established in the original MedCLIP-SAM reproduction pipeline
+(400 slices from 174 patients). Uncertainty for this experiment is
+estimated using patient-cluster bootstrap resampling.
+
+Brain600:
+The high-operating-point experiment used the separate 600-image released
+MedCLIP-SAMv2 brain-tumor evaluation cohort together with its official
+image-specific descriptions. The prepared Brain400 and released Brain600
+cohorts have zero filename overlap. Patient-level correspondence between
+the cohorts is unavailable and is not assumed. Patient identifiers are
+also unavailable for the released Brain600 cohort; uncertainty intervals
+therefore use image-level bootstrap resampling, which may be optimistic
+if multiple images originate from the same patient.
+
+The Brain600 experiment is a parent-compatible high-performance
+evaluation and must not be described as the same cohort or a direct
+controlled extension of Brain400.
+
+
+EXPERIMENT STATUS
+=================
+FROZEN.
+
+No further substantive model experiments are planned unless manuscript
+construction reveals a specific fatal evidentiary gap.

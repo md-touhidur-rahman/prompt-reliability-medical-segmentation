@@ -1,0 +1,35 @@
+{
+  "dataset": "Brain600",
+  "split": {
+    "development_cases": 469,
+    "development_patients": 142,
+    "heldout_cases": 131,
+    "heldout_patients": 35
+  },
+  "primary_signal": "sam_disagreement",
+  "signal_definition": "maximum SAM-mask disagreement relative to H0 across H1,H2,L3,L4,L5",
+  "threshold_selection": "Youden J maximized on development partition only",
+  "heldout_used_for_selection": false,
+  "targets": {
+    "range20": {
+      "definition": "Dice range >= 0.20",
+      "development_events": 97,
+      "development_nonevents": 372,
+      "development_auc": 0.9806562465358607,
+      "threshold": 0.3482056256062076,
+      "development_sensitivity": 1.0,
+      "development_specificity": 0.9139784946236559,
+      "youden_j": 0.9139784946236559
+    },
+    "range50": {
+      "definition": "Dice range >= 0.50",
+      "development_events": 47,
+      "development_nonevents": 422,
+      "development_auc": 0.9886054250277301,
+      "threshold": 0.7098640900403483,
+      "development_sensitivity": 0.9787234042553191,
+      "development_specificity": 0.9715639810426541,
+      "youden_j": 0.9502873852979732
+    }
+  }
+}
